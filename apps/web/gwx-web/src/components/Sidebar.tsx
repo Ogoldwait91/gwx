@@ -19,7 +19,12 @@ function NavItem({ href, label }: { href: string; label: string }) {
 export default function Sidebar() {
   return (
     <aside className="hidden md:flex flex-col w-64 bg-white border-r border-neutral-200 p-4 space-y-2">
-      <div className="mb-4"><img src="/gwx-logo.svg" alt="GWX" width={140}/></div>
+      {/* Elite bank-style wordmark */}
+      <div className="mb-6 px-1 select-none">
+        <div className="brand-title">GWX</div>
+        <div className="brand-sub">Goldwait&nbsp;Exchange</div>
+      </div>
+
       <NavItem href="/" label="Dashboard" />
       <NavItem href="/decide" label="Decision Engine" />
       <NavItem href="/backtest" label="Backtest" />
