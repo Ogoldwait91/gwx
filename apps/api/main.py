@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
-import sqlite3, csv, io
+import sqlite3, csv, io, math
 from pathlib import Path
 import sys, traceback
 
@@ -52,9 +52,24 @@ class DecideOut(BaseModel):
     side: str
     reason: str
     size: float
-    rsi: float
-    sma: float
-    price: float
+    rsi: Optional[float] = None
+    sma: Optional[float] = None
+    price: Optional[float] = None
+
+def _save(d):
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn.execute("INSERT INTO decisions(ts,symbol,side,reason,size,created_at) VALUES(?,?,?,?,?,?)",
+                 (d.ts, d.symbol, d.side, d.reason, d.size, datetime.utcnow().isoformat()))
+    conn.commit(); conn.close()
+
+def _to_dict_sanitized(d) -> dict:
+    # Convert dataclass -> dict and replace NaN with None
+    out = dict(d.__dict__)
+    for k in ("rsi","sma","price","size"):
+        v = out.get(k)
+        if isinstance(v, float) and math.isnan(v):
+            out[k] = None
+    return out
 
 @app.get("/")
 def root_route():
@@ -64,19 +79,13 @@ def root_route():
 def health():
     return {"ok": True}
 
-def _save(d):
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.execute("INSERT INTO decisions(ts,symbol,side,reason,size,created_at) VALUES(?,?,?,?,?,?)",
-                 (d.ts, d.symbol, d.side, d.reason, d.size, datetime.utcnow().isoformat()))
-    conn.commit(); conn.close()
-
 @app.post("/signals/decide", response_model=DecideOut)
 def decide(payload: DecideIn):
     try:
         bars = [gde.Bar(ts=b.ts.isoformat(), open=b.open, high=b.high, low=b.low, close=b.close, volume=b.volume) for b in payload.bars]
         d = gde.decide(payload.symbol, bars)
         _save(d)
-        return DecideOut(**d.__dict__)
+        return DecideOut(**_to_dict_sanitized(d))
     except Exception:
         print("ERROR /signals/decide:\n", traceback.format_exc())
         raise HTTPException(status_code=500, detail="decide failed")
@@ -102,7 +111,7 @@ def decide_csv(symbol: str = "EURUSD", csv_text: str = Body(..., media_type="tex
             raise ValueError("no rows parsed")
         d = gde.decide(symbol, bars)
         _save(d)
-        return DecideOut(**d.__dict__)
+        return DecideOut(**_to_dict_sanitized(d))
     except Exception:
         print("ERROR /signals/decide/csv:\n", traceback.format_exc())
         raise HTTPException(status_code=400, detail="CSV parse or decide failed")
