@@ -1,131 +1,116 @@
-﻿from fastapi import FastAPI
+﻿from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from datetime import datetime, timedelta
-from typing import List
-import os, sys
+from pydantic import BaseModel, Field
+from typing import List, Optional
+from datetime import datetime
+import sqlite3, csv, io
+from pathlib import Path
+import sys, traceback
 
-# add packages/gde to import path
-repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-sys.path.append(os.path.join(repo_root, "packages", "gde"))
+# ---- import decision engine ----
+root = Path(__file__).resolve().parents[2]
+pkg_path = root / "packages"
+if str(pkg_path) not in sys.path:
+    sys.path.append(str(pkg_path))
+import gde.core as gde
 
-from gde.types import Event
-from gde.pipeline import decide_for_event
+app = FastAPI(title="GWX API")
 
-from db import SessionLocal, init_db
-from models import Signal as SignalModel
-
-app = FastAPI(title="GWX - Goldwait Exchange API")
-
+origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=origins,
+    allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
 )
 
-class EventOut(BaseModel):
-    id: str
-    time_utc: datetime
-    country: str
-    category: str
-    importance: int
-    consensus: float
-    unit: str
-    has_actual: bool
+DB_PATH = str((Path(__file__).parent / "gwx.sqlite").resolve())
 
-class SignalOut(BaseModel):
-    created_at: datetime
-    event_id: str
-    country: str
-    category: str
-    consensus: float
-    actual: float
-    unit: str
-    z: float
-    impact: float
-    regime: str
+def init_db():
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn.execute("""CREATE TABLE IF NOT EXISTS decisions(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ts TEXT, symbol TEXT, side TEXT, reason TEXT, size REAL, created_at TEXT
+    )""")
+    conn.commit(); conn.close()
+init_db()
+
+class BarIn(BaseModel):
+    ts: datetime
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: Optional[float] = None
+
+class DecideIn(BaseModel):
+    symbol: str = Field(examples=["EURUSD"])
+    bars: List[BarIn]
+
+class DecideOut(BaseModel):
+    ts: str
     symbol: str
-    mode: str
-    side: str | None
-    entry: str
-    stop: str
-    tp1: str | None
-    tp2: str | None
-    notes: str
-    sizing_pct: float
-    confirmed: bool
-    confirm_reasons: str
+    side: str
+    reason: str
+    size: float
+    rsi: float
+    sma: float
+    price: float
 
-def _stub_events() -> List[Event]:
-    now = datetime.utcnow()
-    return [
-        Event(id="us_cpi_yoy", time_utc=now, country="US", category="CPI_YoY", importance=3, consensus=3.3, actual=3.5, unit="%"),
-        Event(id="uk_cpi_yoy", time_utc=now + timedelta(minutes=30), country="UK", category="CPI_YoY", importance=3, consensus=2.8, actual=2.7, unit="%"),
-    ]
-
-def _get_atr(symbol: str) -> float:
-    defaults = {"XAUUSD":0.6, "GBPUSD":0.3, "EURUSD":0.25, "NAS100":1.2, "DXY":0.2, "FTSE100":0.8}
-    return defaults.get(symbol, 0.5)
-
-@app.on_event("startup")
-def _startup():
-    init_db()
+@app.get("/")
+def root_route():
+    return {"ok": True, "service": "gwx-api", "endpoints": ["/health", "/signals/decide", "/signals/decide/csv", "/decisions/recent", "/docs"]}
 
 @app.get("/health")
 def health():
-    return {"ok": True, "service":"GWX API"}
+    return {"ok": True}
 
-@app.get("/events", response_model=List[EventOut])
-def events():
-    out = []
-    for ev in _stub_events():
-        out.append(EventOut(
-            id=ev.id, time_utc=ev.time_utc, country=ev.country, category=ev.category,
-            importance=ev.importance, consensus=ev.consensus, unit=ev.unit,
-            has_actual=ev.actual is not None
-        ))
-    return out
+def _save(d):
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn.execute("INSERT INTO decisions(ts,symbol,side,reason,size,created_at) VALUES(?,?,?,?,?,?)",
+                 (d.ts, d.symbol, d.side, d.reason, d.size, datetime.utcnow().isoformat()))
+    conn.commit(); conn.close()
 
-@app.post("/run-decisions")
-def run_decisions():
-    """Generate signals from stub events, persist to DB, and return them."""
-    signals = []
-    for ev in _stub_events():
-        for s in decide_for_event(ev, get_atr=_get_atr):
-            signals.append(s)
-            _save_signal(s)
-    return {"signals": signals}
-
-@app.get("/signals", response_model=List[SignalOut])
-def get_signals(limit: int = 50):
-    db = SessionLocal()
+@app.post("/signals/decide", response_model=DecideOut)
+def decide(payload: DecideIn):
     try:
-        rows = db.query(SignalModel).order_by(SignalModel.id.desc()).limit(limit).all()
-        rows.reverse()
-        return [SignalOut(
-            created_at=r.created_at, event_id=r.event_id, country=r.country, category=r.category,
-            consensus=r.consensus, actual=r.actual, unit=r.unit, z=r.z, impact=r.impact, regime=r.regime,
-            symbol=r.symbol, mode=r.mode, side=r.side, entry=r.entry, stop=r.stop, tp1=r.tp1, tp2=r.tp2,
-            notes=r.notes, sizing_pct=r.sizing_pct, confirmed=r.confirmed, confirm_reasons=r.confirm_reasons or ""
-        ) for r in rows]
-    finally:
-        db.close()
+        bars = [gde.Bar(ts=b.ts.isoformat(), open=b.open, high=b.high, low=b.low, close=b.close, volume=b.volume) for b in payload.bars]
+        d = gde.decide(payload.symbol, bars)
+        _save(d)
+        return DecideOut(**d.__dict__)
+    except Exception:
+        print("ERROR /signals/decide:\n", traceback.format_exc())
+        raise HTTPException(status_code=500, detail="decide failed")
 
-def _save_signal(s: dict):
-    db = SessionLocal()
+@app.post("/signals/decide/csv", response_model=DecideOut)
+def decide_csv(symbol: str = "EURUSD", csv_text: str = Body(..., media_type="text/plain")):
+    """
+    Accepts raw CSV text:
+    ts,open,high,low,close,volume
+    2025-10-28T09:00:00Z,1.0701,1.0710,1.0690,1.0705,1000
+    """
     try:
-        row = SignalModel(
-            event_id=s["event_id"], country=s["country"], category=s["category"],
-            consensus=s["consensus"], actual=s["actual"], unit=s["unit"], z=s["z"], impact=s["impact"],
-            regime=s["regime"], symbol=s["symbol"], mode=s["playbook"]["mode"], side=s["playbook"]["side"],
-            entry=s["playbook"]["entry"], stop=s["playbook"]["stop"], tp1=s["playbook"]["tp1"], tp2=s["playbook"]["tp2"],
-            notes=s["playbook"]["notes"], sizing_pct=s["sizing_pct"], confirmed=s["confirmed"],
-            confirm_reasons=",".join(s.get("confirm_reasons", []))
-        )
-        db.add(row)
-        db.commit()
-    finally:
-        db.close()
+        f = io.StringIO(csv_text.strip())
+        reader = csv.DictReader(f)
+        bars = []
+        for row in reader:
+            bars.append(gde.Bar(
+                ts=row["ts"], open=float(row["open"]), high=float(row["high"]),
+                low=float(row["low"]), close=float(row["close"]),
+                volume=float(row.get("volume", "0") or 0.0)
+            ))
+        if len(bars) == 0:
+            raise ValueError("no rows parsed")
+        d = gde.decide(symbol, bars)
+        _save(d)
+        return DecideOut(**d.__dict__)
+    except Exception:
+        print("ERROR /signals/decide/csv:\n", traceback.format_exc())
+        raise HTTPException(status_code=400, detail="CSV parse or decide failed")
 
+@app.get("/decisions/recent")
+def recent(limit: int = 20):
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    cur = conn.execute("SELECT ts,symbol,side,reason,size,created_at FROM decisions ORDER BY id DESC LIMIT ?", (limit,))
+    rows = [{"ts":r[0], "symbol":r[1], "side":r[2], "reason":r[3], "size":r[4], "created_at":r[5]} for r in cur.fetchall()]
+    conn.close()
+    return {"items": rows, "count": len(rows)}
