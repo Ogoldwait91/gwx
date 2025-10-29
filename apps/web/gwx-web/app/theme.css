@@ -1,0 +1,81 @@
+﻿:root {
+  --gwx-green: #0ea15f;
+  --gwx-green-dark: #087f4e;
+  --gwx-bg: #f6f7f9;
+  --gwx-surface: #ffffff;
+  --gwx-text: #0b1220;
+  --gwx-muted: #6b7280;
+  --gwx-border: #e5e7eb;
+  --gwx-radius: 14px;
+  --gwx-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif;
+}
+
+body {
+  background-color: var(--gwx-bg);
+  color: var(--gwx-text);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.card {
+  background: var(--gwx-surface);
+  border: 1px solid var(--gwx-border);
+  border-radius: var(--gwx-radius);
+  box-shadow: var(--gwx-shadow);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+
+.btn {
+  background: var(--gwx-surface);
+  border: 1px solid var(--gwx-border);
+  border-radius: var(--gwx-radius);
+  padding: 0.55rem 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn:hover { background: #f1f5f9; }
+
+.btn-primary {
+  background: var(--gwx-green);
+  border: none;
+  color: white;
+}
+.btn-primary:hover { background: var(--gwx-green-dark); }
+
+.badge {
+  display: inline-block;
+  background: #ecfdf5;
+  color: #047857;
+  border-radius: 9999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.container-narrow {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+.trade-banner {
+  border-radius: var(--gwx-radius);
+  padding: 1.5rem;
+  text-align: center;
+  font-weight: 600;
+  font-size: 1.5rem;
+  color: white;
+}
+.trade-banner.trade {
+  background: linear-gradient(135deg, var(--gwx-green), #22c55e);
+}
+.trade-banner.no-trade {
+  background: linear-gradient(135deg, #6b7280, #94a3b8);
+}
+@keyframes fade-in { from {opacity:0;transform:translateY(4px);} to {opacity:1;transform:translateY(0);} }
+.animate-fade-in { animation: fade-in 0.6s ease; }

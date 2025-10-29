@@ -1,13 +1,22 @@
 ﻿@import "tailwindcss";
-@reference "tailwindcss";
 
-/* Light global defaults */
-html, body { height: 100%; }
-body { @apply bg-neutral-50 text-neutral-900; }
+:root{
+  --gwx-green: #0EA15F;
+  --gwx-ink: #0b1220;
+  --gwx-bg: #f7faf9;
+}
 
-/* Small utility classes for our UI */
-.container-narrow { @apply max-w-5xl mx-auto px-4; }
-.card { @apply bg-white rounded-2xl shadow border border-neutral-200; }
-.btn { @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 border border-neutral-300 hover:bg-neutral-100; }
-.btn-primary { @apply bg-emerald-700 text-white border-transparent hover:bg-emerald-600; }
-.badge { @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs bg-neutral-100 text-neutral-700; }
+html,body{ height:100%; }
+body{ background: var(--gwx-bg); color: var(--gwx-ink); }
+
+.container-narrow{ max-width:880px; margin:0 auto; }
+.card{ background:#fff; border:1px solid #e7e7ea; border-radius:16px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+.btn{ padding:.55rem .85rem; border:1px solid #e0e0e4; border-radius:12px; }
+.btn-primary{ padding:.55rem .95rem; border-radius:12px; background:var(--gwx-green); color:#fff; }
+.badge{ font-size:.75rem; padding:.2rem .5rem; border-radius:999px; background:#eef2f1; }
+
+.layout{ display:flex; min-height:100vh; }
+.main{ flex:1; display:flex; flex-direction:column; }
+.content{ padding:20px; }
+
+table th{ font-weight:600; }

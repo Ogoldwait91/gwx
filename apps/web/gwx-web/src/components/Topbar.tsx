@@ -1,36 +1,19 @@
 ﻿"use client";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useUser } from "@/hooks/useUser";
 
-export default function Topbar(){
-  const [ok, setOk] = useState<boolean | null>(null);
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-
-  useEffect(()=>{
-    let alive = true;
-    (async ()=>{
-      try{
-        const r = await fetch(`${API_URL}/health`, { cache: "no-store" });
-        if(!alive) return;
-        setOk(r.ok);
-      }catch{
-        if(!alive) return;
-        setOk(false);
-      }
-    })();
-    return ()=>{ alive = false; }
-  }, []);
-
+export default function Topbar() {
+  const [user] = useUser();
   return (
-    <div className="px-4 py-3 border-b border-neutral-200 flex items-center gap-3 bg-white sticky top-0 z-10">
-      <Link href="/" className="flex items-center gap-2">
-        <img src="/gwx-logo.svg" alt="GWX" width={140} height={28}/>
-      </Link>
-      <div className="ml-auto flex items-center gap-3">
-        <div title={ok===null ? "Checking…" : ok ? "API healthy" : "API down"}
-             className="w-2.5 h-2.5 rounded-full"
-             style={{ background: ok===null ? "#cbd5e1" : ok ? "#0EA15F" : "#ef4444" }} />
+    <header className="flex justify-between items-center bg-white border-b border-neutral-200 px-6 py-3 sticky top-0 z-40">
+      <h1 className="text-lg font-semibold tracking-tight text-neutral-800">Goldwait Exchange</h1>
+      <div className="hidden sm:flex items-center gap-6">
+        <div className="text-sm text-neutral-500">
+          <span className="font-medium text-neutral-800">Equity:</span> £{user.equity.toLocaleString()}
+        </div>
+        <div className="text-sm text-neutral-500">
+          <span className="font-medium text-neutral-800">Mode:</span> {user.mode}
+        </div>
       </div>
-    </div>
+    </header>
   );
 }
