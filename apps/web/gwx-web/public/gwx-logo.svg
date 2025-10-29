@@ -1,0 +1,10 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="180" height="36" viewBox="0 0 180 36" fill="none">
+  <rect x="0" y="0" width="180" height="36" rx="8" fill="white"/>
+  <g transform="translate(10,7)">
+    <rect x="0" y="0" width="22" height="22" rx="6" fill="#0EA15F"/>
+    <path d="M6 6h10l-2 4h-4l3 6h-4l-3-6v-4z" fill="white" opacity=".92"/>
+  </g>
+  <text x="44" y="23" font-family="Inter, system-ui, Segoe UI, Arial" font-size="18" font-weight="700" fill="#0B1220">
+    GWX · Goldwait Exchange
+  </text>
+</svg>
