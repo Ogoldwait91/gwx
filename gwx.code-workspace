@@ -1,0 +1,16 @@
+﻿{
+  "folders": [
+    { "path": "apps/api" },
+    { "path": "apps/web/gwx-web" },
+    { "path": "packages/gde" }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/.venv": true,
+      "**/node_modules": true,
+      "**/.next": true
+    },
+    "python.defaultInterpreterPath": "apps/api/.venv/Scripts/python.exe"
+  }
+}

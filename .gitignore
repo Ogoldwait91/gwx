@@ -1,0 +1,17 @@
+﻿# Node
+apps/web/gwx-web/.next/
+apps/web/gwx-web/node_modules/
+apps/web/gwx-web/.env.local
+
+# Python
+apps/api/.venv/
+**/__pycache__/
+*.pyc
+
+# Local DB
+apps/api/gwx.db
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+.vscode/

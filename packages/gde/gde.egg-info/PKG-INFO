@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: gde
+Version: 0.1.0
+Summary: Goldwait Decision Engine (GDE) powering GWX
+Author: Goldwait Capital
+Requires-Python: >=3.11
+Requires-Dist: numpy>=2.1.0
+Requires-Dist: pandas>=2.2.0

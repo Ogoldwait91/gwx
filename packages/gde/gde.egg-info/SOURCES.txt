@@ -1,0 +1,16 @@
+pyproject.toml
+gde/__init__.py
+gde/confirm.py
+gde/mapping.py
+gde/pipeline.py
+gde/playbook.py
+gde/regime.py
+gde/sizing.py
+gde/surprise.py
+gde/types.py
+gde.egg-info/PKG-INFO
+gde.egg-info/SOURCES.txt
+gde.egg-info/dependency_links.txt
+gde.egg-info/requires.txt
+gde.egg-info/top_level.txt
+tests/test_placeholder.py
